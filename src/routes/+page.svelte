@@ -114,6 +114,56 @@
     giebelPreview = [];
   }
 
+  function buildGiebelSvg(
+    preview: { length: number; quantity: number }[],
+    base: number,
+    height: number,
+    boardWidth: number
+  ): string {
+    const svgW = 600;
+    const scale = svgW / base;
+    const svgH = Math.round(height * scale);
+    const bh = Math.max(boardWidth * scale, 3);
+
+    const COLORS = [
+      '#4e9af1','#f4a261','#2a9d8f','#e76f51','#8ecae6',
+      '#a8dadc','#f1c40f','#9b59b6','#1abc9c','#e74c3c'
+    ];
+
+    let rects = '';
+    let labels = '';
+
+    for (let i = 0; i < preview.length; i++) {
+      const board = preview[i];
+      const bw = board.length * scale;
+      const bx = (svgW - bw) / 2;
+      const by = svgH - (i + 1) * bh;
+      const color = COLORS[i % COLORS.length];
+
+      rects += `<rect x="${bx.toFixed(1)}" y="${by.toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.ceil(bh)}" fill="${color}" stroke="white" stroke-width="0.5"/>`;
+
+      if (bh >= 14) {
+        const fontSize = Math.min(11, bh * 0.65);
+        labels += `<text x="${(svgW / 2).toFixed(1)}" y="${(by + bh / 2).toFixed(1)}" text-anchor="middle" dominant-baseline="middle" font-size="${fontSize.toFixed(1)}" fill="white" font-weight="bold">${board.length}mm</text>`;
+      }
+    }
+
+    const points = `${svgW / 2},0 0,${svgH} ${svgW},${svgH}`;
+
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${svgW} ${svgH}" width="100%">
+  <defs>
+    <clipPath id="giebel-clip">
+      <polygon points="${points}"/>
+    </clipPath>
+  </defs>
+  <g clip-path="url(#giebel-clip)">
+    ${rects}
+    ${labels}
+  </g>
+  <polygon points="${points}" fill="none" stroke="#94a3b8" stroke-width="2" stroke-dasharray="6,4"/>
+</svg>`;
+  }
+
   function fmt(n: number) {
     return n.toFixed(1);
   }
@@ -238,6 +288,9 @@
 
     {#if giebelPreview.length > 0}
       <div class="giebel-result mt">
+        <div class="giebel-svg-wrap">
+          {@html buildGiebelSvg(giebelPreview, giebelBase, giebelHeight, giebelBoardWidth)}
+        </div>
         <p class="summary">{giebelPreview.length} verschiedene Längen · {giebelPreview.reduce((s, b) => s + b.quantity, 0)} Bretter gesamt</p>
         <div class="giebel-list">
           {#each giebelPreview as board, i}
@@ -644,7 +697,13 @@
     gap: 0.75rem;
     margin-bottom: 0.75rem;
   }
-  .giebel-result { }
+  .giebel-svg-wrap {
+    background: #f8fafc;
+    border-radius: 10px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    overflow: hidden;
+  }
   .giebel-list {
     display: flex;
     flex-wrap: wrap;
