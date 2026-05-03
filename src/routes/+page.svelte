@@ -94,7 +94,7 @@
     const boards: { length: number; quantity: number }[] = [];
     let y = 0;
     while (y < giebelHeight) {
-      const length = Math.round(giebelBase * (1 - y / giebelHeight));
+      const length = Math.ceil(giebelBase * (1 - y / giebelHeight));
       if (length < 50) break;
       boards.push({ length, quantity: giebelCount });
       y += giebelBoardWidth;
