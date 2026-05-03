@@ -1,12 +1,12 @@
 <script lang="ts">
   import { optimize, compareStockLengths, KERF_DEFAULT } from '$lib/optimizer';
-  import { buildSvg } from '$lib/visualizer';
+  import { buildSvg, buildCutGuide } from '$lib/visualizer';
   import { calculateGiebelBoards } from '$lib/giebel';
   import type { Part, OptimizationResult, ComparisonEntry } from '$lib/types';
 
   let kerf = $state(KERF_DEFAULT);
   let stockLength = $state(3000);
-  let compareInputRaw = $state('1800,2400,3000,3600,4800,6000');
+  let compareInputRaw = $state('1800,2400,3000');
   let selectedProfile = $state('alle');
   let globalBoardWidth = $state(140); // mm – tatsächliche Brettbreite für Verkleidung
 
@@ -256,7 +256,7 @@
       <h3>Längen vergleichen</h3>
       <label>
         Längen (kommagetrennt, mm)
-        <input bind:value={compareInputRaw} placeholder="1800,2400,3000,3600,4800,6000" />
+        <input bind:value={compareInputRaw} placeholder="1800,2400,3000" />
       </label>
       <button class="btn-secondary" onclick={runCompare}>Beste Länge finden</button>
     </section>
@@ -409,21 +409,7 @@
             {@html buildSvg(stock, kerf)}
           </div>
 
-          <!-- Schneideanleitung -->
-          <div class="cut-guide">
-            {#each stock.cuts as cut, i}
-              <div class="cg-row">
-                <span class="cg-num">{i + 1}.</span>
-                <span class="cg-part">{cut.partName}</span>
-                <span class="cg-length">{cut.length} mm</span>
-                {#if i < stock.cuts.length - 1}
-                  <span class="cg-mark">→ Schnitt bei <strong>{cut.endPos} mm</strong> vom Anfang</span>
-                {:else}
-                  <span class="cg-rest">→ Verschnitt: {fmt(stock.waste)} mm</span>
-                {/if}
-              </div>
-            {/each}
-          </div>
+          {@html buildCutGuide(stock, kerf)}
         </div>
       {/each}
     </section>

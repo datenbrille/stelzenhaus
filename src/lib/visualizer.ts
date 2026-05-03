@@ -80,6 +80,24 @@ export function buildSvg(stock: StockResult, kerf: number): string {
 </svg>`;
 }
 
+export function buildCutGuide(stock: StockResult, kerf: number): string {
+  let rows = '';
+  for (let i = 0; i < stock.cuts.length; i++) {
+    const cut = stock.cuts[i];
+    const isLast = i === stock.cuts.length - 1;
+    const action = isLast
+      ? `<span style="color:#9ca3af">→ Verschnitt: ${stock.waste.toFixed(1)} mm</span>`
+      : `<span style="color:#2563eb">→ Schnitt bei <strong>${cut.endPos} mm</strong> vom Anfang</span>`;
+    rows += `<div style="display:flex;align-items:baseline;gap:0.5rem;padding:0.2rem 0;border-bottom:1px solid #f0f0f0;flex-wrap:wrap">
+      <span style="color:#aaa;font-size:0.75rem;width:18px;flex-shrink:0">${i + 1}.</span>
+      <span style="font-weight:600;min-width:90px">${escapeXml(cut.partName)}</span>
+      <span style="color:#555;min-width:65px;font-variant-numeric:tabular-nums">${cut.length} mm</span>
+      ${action}
+    </div>`;
+  }
+  return `<div style="margin:0.5rem 0 0;padding:0.6rem 0.75rem;background:#f8fafc;border-radius:8px;font-size:0.85rem;border:1px solid #e5e7eb">${rows}</div>`;
+}
+
 function escapeXml(str: string): string {
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
