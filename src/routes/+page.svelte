@@ -5,7 +5,6 @@
   import type { Part, OptimizationResult, ComparisonEntry } from '$lib/types';
 
   let kerf = $state(KERF_DEFAULT);
-  let stockLength = $state(3000);
   let compareInputRaw = $state('1800,2400,3000');
   let selectedProfile = $state('alle');
   let globalBoardWidth = $state(140); // mm – tatsächliche Brettbreite für Verkleidung
@@ -73,11 +72,6 @@
       .filter((g) => g.parts.length > 0);
   }
 
-  function runOptimize() {
-    results = getProfileGroups().map((g) => optimize(g.parts, stockLength, kerf));
-    comparisons = [];
-  }
-
   function runCompare() {
     const lengths = compareInputRaw
       .split(',')
@@ -89,6 +83,17 @@
       entries: compareStockLengths(g.parts, lengths, kerf)
     }));
     results = [];
+  }
+
+  function runCutPlan() {
+    const groups = getProfileGroups();
+    results = comparisons.flatMap((cmp) => {
+      const best = cmp.entries.find((e) => e.isBest);
+      if (!best) return [];
+      const group = groups.find((g) => g.profile === cmp.profile);
+      if (!group) return [];
+      return [optimize(group.parts, best.stockLength, kerf)];
+    });
   }
 
   function addPart() {
@@ -244,21 +249,12 @@
 
       <hr />
 
-      <h3>Einzelne Länge optimieren</h3>
+      <h3>Schritt 1 – Beste Einkaufslänge finden</h3>
       <label>
-        Einkaufslänge (mm)
-        <input type="number" bind:value={stockLength} min="1" />
-      </label>
-      <button class="btn-primary" onclick={runOptimize}>Optimiere</button>
-
-      <hr />
-
-      <h3>Längen vergleichen</h3>
-      <label>
-        Längen (kommagetrennt, mm)
+        Vergleichs-Längen (kommagetrennt, mm)
         <input bind:value={compareInputRaw} placeholder="1800,2400,3000" />
       </label>
-      <button class="btn-secondary" onclick={runCompare}>Beste Länge finden</button>
+      <button class="btn-primary" onclick={runCompare}>Beste Länge finden →</button>
     </section>
   </div>
 
@@ -382,6 +378,52 @@
       </div>
     </section>
   {/each}
+
+  <!-- Schritt 2 CTA -->
+  {#if comparisons.length > 0}
+    <section class="card mt step2-card">
+      <div class="step2-header">
+        <div>
+          <h2>Schritt 2 – Schnittplan &amp; Einkaufsliste</h2>
+          <p class="summary" style="margin:0">
+            Erstellt den Schnittplan und die Einkaufsliste für die jeweils beste Länge pro Profil.
+          </p>
+        </div>
+        <button class="btn-action" onclick={runCutPlan}>Schnittplan &amp; Einkaufsliste erstellen →</button>
+      </div>
+    </section>
+  {/if}
+
+  <!-- Einkaufsliste -->
+  {#if results.length > 0}
+    <section class="card mt">
+      <h2>Einkaufsliste</h2>
+      <div class="table-wrap">
+        <table class="result-table">
+          <thead>
+            <tr>
+              <th>Profil</th>
+              <th>Einkaufslänge</th>
+              <th>Anzahl Stangen</th>
+              <th>Gesamtmaterial</th>
+              <th>Verschnitt</th>
+            </tr>
+          </thead>
+          <tbody>
+            {#each results as r}
+              <tr class="shopping-row">
+                <td><strong>{r.profile}</strong></td>
+                <td>{r.stockLength} mm</td>
+                <td class="qty-cell">{r.stocksNeeded}×</td>
+                <td>{fmt(r.totalMaterial)} mm</td>
+                <td>{fmt(r.totalWaste)} mm ({fmt(r.totalWastePercent)}%)</td>
+              </tr>
+            {/each}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  {/if}
 
   <!-- Schnittpläne -->
   {#each results as result}
@@ -846,4 +888,36 @@
   }
 
   .bar-pct-invalid { color: #bbb; }
+
+  /* Step 2 CTA card */
+  .step2-card {
+    border: 2px solid #4e9af1;
+    background: #f0f7ff;
+  }
+
+  .step2-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+  }
+
+  .btn-action {
+    background: #4e9af1;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 0.6rem 1.4rem;
+    cursor: pointer;
+    font-size: 0.95rem;
+    font-weight: 700;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .btn-action:hover { background: #3b87e0; }
+
+  /* Shopping list */
+  .shopping-row td { padding: 0.6rem 0.75rem; }
+  .qty-cell { font-size: 1.1rem; font-weight: 700; color: #2a9d8f; }
 </style>
