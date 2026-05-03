@@ -1,6 +1,7 @@
 <script lang="ts">
   import { optimize, compareStockLengths, KERF_DEFAULT } from '$lib/optimizer';
   import { buildSvg } from '$lib/visualizer';
+  import { calculateGiebelBoards } from '$lib/giebel';
   import type { Part, OptimizationResult, ComparisonEntry } from '$lib/types';
 
   let kerf = $state(KERF_DEFAULT);
@@ -9,9 +10,12 @@
   let selectedProfile = $state('alle');
   let globalBoardWidth = $state(140); // mm – tatsächliche Brettbreite für Verkleidung
 
-  // Giebel-Rechner
-  let giebelBase = $state(3000);
-  let giebelHeight = $state(1500);
+  // Giebel-Rechner – Defaults aus Bauplan: Basis 1500mm, Schenkel 900mm → Höhe ≈ 497mm
+  let giebelBase = $state(1500);
+  let giebelSchenkel = $state(900);
+  let giebelHeight = $derived(
+    Math.round(Math.sqrt(Math.max(0, giebelSchenkel ** 2 - (giebelBase / 2) ** 2)))
+  );
   let giebelBoardWidth = $state(140);
   let giebelCount = $state(2);
   let giebelProfile = $state('2.4x14');
@@ -91,15 +95,7 @@
   }
 
   function calculateGiebel() {
-    const boards: { length: number; quantity: number }[] = [];
-    let y = 0;
-    while (y < giebelHeight) {
-      const length = Math.ceil(giebelBase * (1 - y / giebelHeight));
-      if (length < 50) break;
-      boards.push({ length, quantity: giebelCount });
-      y += giebelBoardWidth;
-    }
-    giebelPreview = boards;
+    giebelPreview = calculateGiebelBoards(giebelBase, giebelHeight, giebelBoardWidth, giebelCount);
   }
 
   function addGiebelToParts() {
@@ -268,8 +264,13 @@
         <input type="number" bind:value={giebelBase} min="1" />
       </label>
       <label>
-        Giebelhöhe (mm)
-        <input type="number" bind:value={giebelHeight} min="1" />
+        Schenkellänge (mm)
+        <input type="number" bind:value={giebelSchenkel} min="1" />
+        <span class="hint">Länge der Dachschräge</span>
+      </label>
+      <label>
+        Berechnete Höhe (mm)
+        <input type="number" value={giebelHeight} readonly class="input-readonly" />
       </label>
       <label>
         Brettbreite (mm)
@@ -291,7 +292,15 @@
         <div class="giebel-svg-wrap">
           {@html buildGiebelSvg(giebelPreview, giebelBase, giebelHeight, giebelBoardWidth)}
         </div>
-        <p class="summary">{giebelPreview.length} verschiedene Längen · {giebelPreview.reduce((s, b) => s + b.quantity, 0)} Bretter gesamt</p>
+        <p class="summary">
+          {giebelPreview.length} verschiedene Längen ·
+          {giebelPreview.reduce((s, b) => s + b.quantity, 0)} Bretter gesamt ·
+          Gesamtmaterial: {giebelPreview.reduce((s, b) => s + b.length * b.quantity, 0)} mm
+        </p>
+        <div class="giebel-hint">
+          Längste Brett: <strong>{giebelPreview[0].length} mm</strong> →
+          empfohlene Stangenlänge mindestens <strong>{giebelPreview[0].length} mm</strong>
+        </div>
         <div class="giebel-list">
           {#each giebelPreview as board, i}
             <div class="giebel-chip">
@@ -697,6 +706,22 @@
     gap: 0.75rem;
     margin-bottom: 0.75rem;
   }
+  .input-readonly {
+    background: #f0f0f0;
+    color: #666;
+    cursor: default;
+  }
+
+  .giebel-hint {
+    font-size: 0.85rem;
+    color: #555;
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    border-radius: 8px;
+    padding: 0.5rem 0.75rem;
+    margin-bottom: 0.75rem;
+  }
+
   .giebel-svg-wrap {
     background: #f8fafc;
     border-radius: 10px;
