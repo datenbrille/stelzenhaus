@@ -1,6 +1,6 @@
 import type { Part, CutDetail, StockResult, OptimizationResult } from './types';
 
-export const KERF_DEFAULT = 0.5; // cm (= 5mm)
+export const KERF_DEFAULT = 5; // mm
 
 export function optimize(
   parts: Part[],
@@ -29,8 +29,14 @@ export function optimize(
   }
 
   const stocks: StockResult[] = [];
+  const unplaceable: { partName: string; length: number }[] = [];
 
   for (const item of expanded) {
+    if (item.length > stockLength) {
+      unplaceable.push({ partName: item.partName, length: item.length });
+      continue;
+    }
+
     let placed = false;
 
     for (const stock of stocks) {
@@ -97,7 +103,8 @@ export function optimize(
     stocks,
     totalWaste,
     totalWastePercent,
-    totalMaterial
+    totalMaterial,
+    unplaceable
   };
 }
 
@@ -113,12 +120,16 @@ export function compareStockLengths(
       stocksNeeded: r.stocksNeeded,
       totalWastePercent: r.totalWastePercent,
       totalWaste: r.totalWaste,
+      unplaceableCount: r.unplaceable.length,
       isBest: false
     };
   });
 
-  const best = results.reduce((a, b) => (a.totalWastePercent <= b.totalWastePercent ? a : b));
-  best.isBest = true;
+  const valid = results.filter((r) => r.unplaceableCount === 0);
+  if (valid.length > 0) {
+    const best = valid.reduce((a, b) => (a.totalWastePercent <= b.totalWastePercent ? a : b));
+    best.isBest = true;
+  }
 
   return results;
 }

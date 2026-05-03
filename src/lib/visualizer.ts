@@ -28,7 +28,7 @@ export function buildSvg(stock: StockResult, kerf: number): string {
     rects += `<rect x="${x.toFixed(1)}" y="${barY}" width="${w.toFixed(1)}" height="${barHeight}" fill="${color}" stroke="white" stroke-width="0.5"/>`;
 
     // Label inside rect if wide enough
-    const labelText = `${cut.partName} ${cut.length}cm`;
+    const labelText = `${cut.partName} ${cut.length}mm`;
     const minWidthForLabel = 30;
     if (w > minWidthForLabel) {
       const cx = x + w / 2;

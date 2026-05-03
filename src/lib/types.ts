@@ -31,6 +31,7 @@ export interface OptimizationResult {
   totalWaste: number;
   totalWastePercent: number;
   totalMaterial: number;
+  unplaceable: { partName: string; length: number }[];
 }
 
 export interface ComparisonEntry {
@@ -38,5 +39,6 @@ export interface ComparisonEntry {
   stocksNeeded: number;
   totalWastePercent: number;
   totalWaste: number;
+  unplaceableCount: number;
   isBest: boolean;
 }

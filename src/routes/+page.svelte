@@ -4,25 +4,25 @@
   import type { Part, OptimizationResult, ComparisonEntry } from '$lib/types';
 
   let kerf = $state(KERF_DEFAULT);
-  let stockLength = $state(300);
-  let compareInputRaw = $state('180,240,300,360,480,600');
+  let stockLength = $state(3000);
+  let compareInputRaw = $state('1800,2400,3000,3600,4800,6000');
   let selectedProfile = $state('alle');
 
   let parts = $state<Part[]>([
-    { id: 'p1',  profile: '9x9',    name: 'Pfosten',         length: 180, quantity: 4  },
-    { id: 'p2',  profile: '4x10',   name: 'Platform',        length: 240, quantity: 7  },
-    { id: 'p3',  profile: '4x6',    name: 'Haus-A',          length: 180, quantity: 4  },
-    { id: 'p4',  profile: '4x6',    name: 'Haus-B',          length: 120, quantity: 11 },
-    { id: 'p5',  profile: '4x6',    name: 'Haus-C',          length: 140, quantity: 2  },
-    { id: 'p6',  profile: '4x6',    name: 'Haus-D',          length: 90,  quantity: 8  },
-    { id: 'p7',  profile: '4x6',    name: 'Haus-E',          length: 150, quantity: 4  },
-    { id: 'p8',  profile: '4x6',    name: 'Haus-F',          length: 60,  quantity: 2  },
-    { id: 'p9',  profile: '4x6',    name: 'Haus-G',          length: 140, quantity: 1  },
-    { id: 'p10', profile: '2.4x14', name: 'Verkleidung-A',   length: 60,  quantity: 20 },
-    { id: 'p11', profile: '2.4x14', name: 'Verkleidung-B',   length: 420, quantity: 2  },
-    { id: 'p12', profile: '2.4x14', name: 'Verkleidung-C',   length: 125, quantity: 10 },
-    { id: 'p13', profile: '2.4x14', name: 'Verkleidung-D',   length: 180, quantity: 5  },
-    { id: 'p14', profile: '2.4x14', name: 'Verkleidung-E',   length: 210, quantity: 16 },
+    { id: 'p1',  profile: '9x9',    name: 'Pfosten',         length: 1800, quantity: 4  },
+    { id: 'p2',  profile: '4x10',   name: 'Platform',        length: 2400, quantity: 7  },
+    { id: 'p3',  profile: '4x6',    name: 'Haus-A',          length: 1800, quantity: 4  },
+    { id: 'p4',  profile: '4x6',    name: 'Haus-B',          length: 1200, quantity: 11 },
+    { id: 'p5',  profile: '4x6',    name: 'Haus-C',          length: 1400, quantity: 2  },
+    { id: 'p6',  profile: '4x6',    name: 'Haus-D',          length: 900,  quantity: 8  },
+    { id: 'p7',  profile: '4x6',    name: 'Haus-E',          length: 1500, quantity: 4  },
+    { id: 'p8',  profile: '4x6',    name: 'Haus-F',          length: 600,  quantity: 2  },
+    { id: 'p9',  profile: '4x6',    name: 'Haus-G',          length: 1400, quantity: 1  },
+    { id: 'p10', profile: '2.4x14', name: 'Verkleidung-A',   length: 600,  quantity: 20 },
+    { id: 'p11', profile: '2.4x14', name: 'Verkleidung-B',   length: 4200, quantity: 2  },
+    { id: 'p12', profile: '2.4x14', name: 'Verkleidung-C',   length: 1250, quantity: 10 },
+    { id: 'p13', profile: '2.4x14', name: 'Verkleidung-D',   length: 1800, quantity: 5  },
+    { id: 'p14', profile: '2.4x14', name: 'Verkleidung-E',   length: 2100, quantity: 16 },
   ]);
 
   let results = $state<OptimizationResult[]>([]);
@@ -89,7 +89,7 @@
             <tr>
               <th>Profil</th>
               <th>Name</th>
-              <th>Länge (cm)</th>
+              <th>Länge (mm)</th>
               <th>Menge</th>
               <th></th>
             </tr>
@@ -133,7 +133,7 @@
 
       <h3>Einzelne Länge optimieren</h3>
       <label>
-        Einkaufslänge (cm)
+        Einkaufslänge (mm)
         <input type="number" bind:value={stockLength} min="1" />
       </label>
       <button class="btn-primary" onclick={runOptimize}>Optimiere</button>
@@ -142,8 +142,8 @@
 
       <h3>Längen vergleichen</h3>
       <label>
-        Längen (kommagetrennt, cm)
-        <input bind:value={compareInputRaw} placeholder="180,240,300,360,480,600" />
+        Längen (kommagetrennt, mm)
+        <input bind:value={compareInputRaw} placeholder="1800,2400,3000,3600,4800,6000" />
       </label>
       <button class="btn-secondary" onclick={runCompare}>Beste Länge finden</button>
     </section>
@@ -167,11 +167,17 @@
           <tbody>
             {#each cmp.entries as entry}
               <tr class={entry.isBest ? 'best-row' : ''}>
-                <td>{entry.stockLength} cm</td>
+                <td>{entry.stockLength} mm</td>
                 <td>{entry.stocksNeeded}</td>
                 <td>{fmt(entry.totalWaste)}</td>
                 <td>{fmt(entry.totalWastePercent)}%</td>
-                <td>{#if entry.isBest}<span class="badge-best">Beste Wahl</span>{/if}</td>
+                <td>
+                  {#if entry.unplaceableCount > 0}
+                    <span class="badge-warn">zu kurz ({entry.unplaceableCount} Teile)</span>
+                  {:else if entry.isBest}
+                    <span class="badge-best">Beste Wahl</span>
+                  {/if}
+                </td>
               </tr>
             {/each}
           </tbody>
@@ -180,7 +186,7 @@
       <div class="chart mt">
         {#each cmp.entries as entry}
           <div class="bar-row">
-            <span class="bar-label">{entry.stockLength}cm</span>
+            <span class="bar-label">{entry.stockLength}mm</span>
             <div class="bar-track">
               <div
                 class="bar-fill {entry.isBest ? 'bar-best' : ''}"
@@ -197,17 +203,24 @@
   <!-- Schnittpläne -->
   {#each results as result}
     <section class="card mt">
-      <h2>Schnittplan – Profil {result.profile} | {result.stockLength}cm Stangen</h2>
+      <h2>Schnittplan – Profil {result.profile} | {result.stockLength}mm Stangen</h2>
       <p class="summary">
-        {result.stocksNeeded} Stangen · Gesamtmaterial: {fmt(result.totalMaterial)}cm ·
-        Verschnitt: {fmt(result.totalWaste)}cm ({fmt(result.totalWastePercent)}%)
+        {result.stocksNeeded} Stangen · Gesamtmaterial: {fmt(result.totalMaterial)}mm ·
+        Verschnitt: {fmt(result.totalWaste)}mm ({fmt(result.totalWastePercent)}%)
       </p>
+
+      {#if result.unplaceable.length > 0}
+        <div class="alert-warn">
+          Achtung: {result.unplaceable.length} Teil(e) passen nicht in eine {result.stockLength}mm-Stange:
+          {result.unplaceable.map(u => `${u.partName} (${u.length}mm)`).join(', ')}
+        </div>
+      {/if}
 
       {#each result.stocks as stock}
         <div class="stock-row">
           <div class="stock-header">
-            Stange {stock.stockIndex} – {stock.stockLength}cm
-            <span class="waste-tag">Verschnitt: {fmt(stock.waste)}cm ({fmt(stock.wastePercent)}%)</span>
+            Stange {stock.stockIndex} – {stock.stockLength}mm
+            <span class="waste-tag">Verschnitt: {fmt(stock.waste)}mm ({fmt(stock.wastePercent)}%)</span>
           </div>
           <div class="svg-wrap">
             {@html buildSvg(stock, kerf)}
@@ -492,5 +505,24 @@
     color: #555;
     font-size: 0.9rem;
     margin: 0 0 1.25rem;
+  }
+
+  .alert-warn {
+    background: #fff7ed;
+    border: 1px solid #fed7aa;
+    border-radius: 8px;
+    padding: 0.6rem 0.9rem;
+    font-size: 0.85rem;
+    color: #9a3412;
+    margin-bottom: 1rem;
+  }
+
+  .badge-warn {
+    background: #f97316;
+    color: white;
+    padding: 0.15rem 0.6rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 700;
   }
 </style>
