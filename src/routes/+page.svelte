@@ -19,7 +19,9 @@
   let giebelBoardWidth = $state(140);
   let giebelCount = $state(2);
   let giebelProfile = $state('2.4x14');
+  let giebelStockLength = $state(4200);
   let giebelPreview = $state<{ length: number; quantity: number }[]>([]);
+  let giebelCutPlan = $state<OptimizationResult | null>(null);
 
   let parts = $state<Part[]>([
     { id: 'p1',  profile: '9x9',    name: 'Pfosten',       length: 1800, quantity: 4  },
@@ -95,7 +97,20 @@
   }
 
   function calculateGiebel() {
-    giebelPreview = calculateGiebelBoards(giebelBase, giebelHeight, giebelBoardWidth, giebelCount);
+    const preview = calculateGiebelBoards(giebelBase, giebelHeight, giebelBoardWidth, giebelCount);
+    giebelPreview = preview;
+    if (preview.length > 0) {
+      const giebelParts: Part[] = preview.map((b, i) => ({
+        id: `gp-${i}`,
+        name: `Reihe ${i + 1}`,
+        length: b.length,
+        quantity: b.quantity,
+        profile: giebelProfile
+      }));
+      giebelCutPlan = optimize(giebelParts, giebelStockLength, kerf);
+    } else {
+      giebelCutPlan = null;
+    }
   }
 
   function addGiebelToParts() {
@@ -284,6 +299,11 @@
         Profil
         <input bind:value={giebelProfile} />
       </label>
+      <label>
+        Stangenlänge (mm)
+        <input type="number" bind:value={giebelStockLength} min="1" />
+        <span class="hint">Einkaufslänge für den Schnittplan</span>
+      </label>
     </div>
     <button class="btn-secondary" onclick={calculateGiebel}>Berechnen</button>
 
@@ -311,6 +331,40 @@
           {/each}
         </div>
         <button class="btn-primary mt-sm" onclick={addGiebelToParts}>Zur Stückliste hinzufügen</button>
+
+        {#if giebelCutPlan}
+          <div class="giebel-cutplan">
+            <h3>
+              Schnittplan – {giebelCutPlan.stocksNeeded} Stange{giebelCutPlan.stocksNeeded !== 1 ? 'n' : ''}
+              à {giebelStockLength}mm
+              <span class="waste-tag">Gesamtverschnitt: {fmt(giebelCutPlan.totalWaste)}mm ({fmt(giebelCutPlan.totalWastePercent)}%)</span>
+            </h3>
+
+            {#if giebelCutPlan.unplaceable.length > 0}
+              <div class="alert-warn">
+                {giebelCutPlan.unplaceable.length} Teil(e) passen nicht in {giebelStockLength}mm –
+                bitte längere Stangen wählen: mindestens {giebelPreview[0]?.length}mm
+              </div>
+            {/if}
+
+            {#each giebelCutPlan.stocks as stock}
+              <div class="stock-row">
+                <div class="stock-header">
+                  Stange {stock.stockIndex}
+                  <span class="waste-tag">Verschnitt: {fmt(stock.waste)}mm ({fmt(stock.wastePercent)}%)</span>
+                </div>
+                <div class="svg-wrap">
+                  {@html buildSvg(stock, kerf)}
+                </div>
+                <div class="cut-list">
+                  {#each stock.cuts as cut}
+                    <span class="cut-chip">{cut.partName} · {cut.length}mm</span>
+                  {/each}
+                </div>
+              </div>
+            {/each}
+          </div>
+        {/if}
       </div>
     {/if}
   </section>
@@ -710,6 +764,22 @@
     background: #f0f0f0;
     color: #666;
     cursor: default;
+  }
+
+  .giebel-cutplan {
+    margin-top: 1.25rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid #e5e7eb;
+  }
+
+  .giebel-cutplan h3 {
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin: 0 0 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
   }
 
   .giebel-hint {
