@@ -25,31 +25,38 @@
     { id: 'p14', profile: '2.4x14', name: 'Verkleidung-E',   length: 210, quantity: 16 },
   ]);
 
-  let result = $state<OptimizationResult | null>(null);
-  let comparison = $state<ComparisonEntry[]>([]);
+  let results = $state<OptimizationResult[]>([]);
+  let comparisons = $state<{ profile: string; entries: ComparisonEntry[] }[]>([]);
   let nextId = $state(100);
 
   const profiles = $derived(['alle', ...new Set(parts.map((p) => p.profile))]);
 
-  const filteredParts = $derived(
-    selectedProfile === 'alle' ? parts : parts.filter((p) => p.profile === selectedProfile)
-  );
+  function getProfileGroups(): { profile: string; parts: Part[] }[] {
+    const activeProfiles =
+      selectedProfile === 'alle'
+        ? [...new Set(parts.map((p) => p.profile))]
+        : [selectedProfile];
+    return activeProfiles
+      .map((profile) => ({ profile, parts: parts.filter((p) => p.profile === profile) }))
+      .filter((g) => g.parts.length > 0);
+  }
 
   function runOptimize() {
-    if (filteredParts.length === 0) return;
-    result = optimize(filteredParts, stockLength, kerf);
-    comparison = [];
+    results = getProfileGroups().map((g) => optimize(g.parts, stockLength, kerf));
+    comparisons = [];
   }
 
   function runCompare() {
-    if (filteredParts.length === 0) return;
     const lengths = compareInputRaw
       .split(',')
       .map((s) => parseFloat(s.trim()))
       .filter((n) => !isNaN(n) && n > 0);
     if (lengths.length === 0) return;
-    comparison = compareStockLengths(filteredParts, lengths, kerf);
-    result = null;
+    comparisons = getProfileGroups().map((g) => ({
+      profile: g.profile,
+      entries: compareStockLengths(g.parts, lengths, kerf)
+    }));
+    results = [];
   }
 
   function addPart() {
@@ -142,10 +149,10 @@
     </section>
   </div>
 
-  <!-- Vergleichstabelle -->
-  {#if comparison.length > 0}
+  <!-- Vergleichstabellen -->
+  {#each comparisons as cmp}
     <section class="card mt">
-      <h2>Längenvergleich</h2>
+      <h2>Längenvergleich – Profil {cmp.profile}</h2>
       <div class="table-wrap">
         <table class="result-table">
           <thead>
@@ -158,7 +165,7 @@
             </tr>
           </thead>
           <tbody>
-            {#each comparison as entry}
+            {#each cmp.entries as entry}
               <tr class={entry.isBest ? 'best-row' : ''}>
                 <td>{entry.stockLength} cm</td>
                 <td>{entry.stocksNeeded}</td>
@@ -170,10 +177,8 @@
           </tbody>
         </table>
       </div>
-
-      <!-- Balkendiagramm -->
       <div class="chart mt">
-        {#each comparison as entry}
+        {#each cmp.entries as entry}
           <div class="bar-row">
             <span class="bar-label">{entry.stockLength}cm</span>
             <div class="bar-track">
@@ -187,12 +192,12 @@
         {/each}
       </div>
     </section>
-  {/if}
+  {/each}
 
-  <!-- Schnittplan -->
-  {#if result}
+  <!-- Schnittpläne -->
+  {#each results as result}
     <section class="card mt">
-      <h2>Schnittplan – {result.profile} | {result.stockLength}cm Stangen</h2>
+      <h2>Schnittplan – Profil {result.profile} | {result.stockLength}cm Stangen</h2>
       <p class="summary">
         {result.stocksNeeded} Stangen · Gesamtmaterial: {fmt(result.totalMaterial)}cm ·
         Verschnitt: {fmt(result.totalWaste)}cm ({fmt(result.totalWastePercent)}%)
@@ -215,7 +220,7 @@
         </div>
       {/each}
     </section>
-  {/if}
+  {/each}
 </main>
 
 <style>
