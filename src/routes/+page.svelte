@@ -410,20 +410,20 @@
           </div>
 
           <!-- Schneideanleitung -->
-          <ol class="cut-guide">
+          <div class="cut-guide">
             {#each stock.cuts as cut, i}
-              {@const markAt = Math.round(cut.endPos + i * kerf)}
-              <li>
+              <div class="cg-row">
+                <span class="cg-num">{i + 1}.</span>
                 <span class="cg-part">{cut.partName}</span>
                 <span class="cg-length">{cut.length} mm</span>
                 {#if i < stock.cuts.length - 1}
-                  <span class="cg-mark">→ Markierung bei <strong>{markAt} mm</strong> vom Anfang</span>
+                  <span class="cg-mark">→ Schnitt bei <strong>{cut.endPos} mm</strong> vom Anfang</span>
                 {:else}
-                  <span class="cg-mark cg-rest">→ Rest: {fmt(stock.waste)} mm Verschnitt</span>
+                  <span class="cg-rest">→ Verschnitt: {fmt(stock.waste)} mm</span>
                 {/if}
-              </li>
+              </div>
             {/each}
-          </ol>
+          </div>
         </div>
       {/each}
     </section>
@@ -703,26 +703,35 @@
 
   .cut-guide {
     margin: 0.5rem 0 0;
-    padding: 0.75rem 0.75rem 0.75rem 2rem;
+    padding: 0.6rem 0.75rem;
     background: #f8fafc;
     border-radius: 8px;
     font-size: 0.85rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.3rem;
+    border: 1px solid #e5e7eb;
   }
 
-  .cut-guide li {
+  .cg-row {
     display: flex;
     align-items: baseline;
     gap: 0.5rem;
+    padding: 0.2rem 0;
+    border-bottom: 1px solid #f0f0f0;
     flex-wrap: wrap;
+  }
+
+  .cg-row:last-child { border-bottom: none; }
+
+  .cg-num {
+    color: #aaa;
+    font-size: 0.75rem;
+    width: 18px;
+    flex-shrink: 0;
   }
 
   .cg-part {
     font-weight: 600;
     color: #1a1a2e;
-    min-width: 100px;
+    min-width: 90px;
   }
 
   .cg-length {
@@ -731,13 +740,8 @@
     font-variant-numeric: tabular-nums;
   }
 
-  .cg-mark {
-    color: #2563eb;
-  }
-
-  .cg-rest {
-    color: #9ca3af;
-  }
+  .cg-mark { color: #2563eb; }
+  .cg-rest { color: #9ca3af; }
 
   /* Quantity computed */
   .qty-computed {
