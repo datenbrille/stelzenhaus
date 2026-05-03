@@ -14,8 +14,8 @@ const config = {
       base: process.env.BASE_PATH ?? ''
     },
     prerender: {
-      handleHttpError: ({ path, referrer, message }) => {
-        if (path === '/favicon.png') return;
+      handleHttpError: ({ path, message }) => {
+        if (path.endsWith('/favicon.png')) return;
         throw new Error(message);
       }
     }
