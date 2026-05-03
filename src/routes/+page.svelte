@@ -39,6 +39,14 @@
     { id: 'p11', profile: '2.4x14', name: 'Verkleidung-C', length: 1250, quantity: 10, coverageWidth: 1400  },
     { id: 'p12', profile: '2.4x14', name: 'Verkleidung-D', length: 1800, quantity: 5,  coverageWidth: 700   },
     { id: 'p13', profile: '2.4x14', name: 'Verkleidung-E', length: 2100, quantity: 16, coverageWidth: 2240  },
+    // Giebel: Basis 1500mm, Schenkel 900mm → Höhe 497mm, Brettbreite 140mm, 2 Giebel
+    ...calculateGiebelBoards(1500, 497, 140, 2).map((b, i) => ({
+      id: `giebel-default-${i}`,
+      profile: '2.4x14',
+      name: `Giebel-Reihe ${i + 1}`,
+      length: b.length,
+      quantity: b.quantity
+    }))
   ]);
 
   let results = $state<OptimizationResult[]>([]);
