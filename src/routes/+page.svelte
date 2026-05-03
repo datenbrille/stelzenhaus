@@ -166,15 +166,19 @@
           </thead>
           <tbody>
             {#each cmp.entries as entry}
-              <tr class={entry.isBest ? 'best-row' : ''}>
+              <tr class={entry.isBest ? 'best-row' : entry.unplaceableCount > 0 ? 'invalid-row' : ''}>
                 <td>{entry.stockLength} mm</td>
-                <td>{entry.stocksNeeded}</td>
-                <td>{fmt(entry.totalWaste)}</td>
-                <td>{fmt(entry.totalWastePercent)}%</td>
+                {#if entry.unplaceableCount > 0}
+                  <td colspan="3" class="invalid-msg">
+                    <span class="badge-warn">zu kurz – {entry.unplaceableCount} Teil(e) passen nicht rein</span>
+                  </td>
+                {:else}
+                  <td>{entry.stocksNeeded}</td>
+                  <td>{fmt(entry.totalWaste)} mm</td>
+                  <td>{fmt(entry.totalWastePercent)}%</td>
+                {/if}
                 <td>
-                  {#if entry.unplaceableCount > 0}
-                    <span class="badge-warn">zu kurz ({entry.unplaceableCount} Teile)</span>
-                  {:else if entry.isBest}
+                  {#if entry.unplaceableCount === 0 && entry.isBest}
                     <span class="badge-best">Beste Wahl</span>
                   {/if}
                 </td>
@@ -187,13 +191,18 @@
         {#each cmp.entries as entry}
           <div class="bar-row">
             <span class="bar-label">{entry.stockLength}mm</span>
-            <div class="bar-track">
-              <div
-                class="bar-fill {entry.isBest ? 'bar-best' : ''}"
-                style="width: {Math.min(entry.totalWastePercent, 100)}%"
-              ></div>
-            </div>
-            <span class="bar-pct">{fmt(entry.totalWastePercent)}%</span>
+            {#if entry.unplaceableCount > 0}
+              <div class="bar-track"><div class="bar-invalid" style="width:100%"></div></div>
+              <span class="bar-pct bar-pct-invalid">–</span>
+            {:else}
+              <div class="bar-track">
+                <div
+                  class="bar-fill {entry.isBest ? 'bar-best' : ''}"
+                  style="width: {Math.min(entry.totalWastePercent, 100)}%"
+                ></div>
+              </div>
+              <span class="bar-pct">{fmt(entry.totalWastePercent)}%</span>
+            {/if}
           </div>
         {/each}
       </div>
@@ -525,4 +534,19 @@
     font-size: 0.75rem;
     font-weight: 700;
   }
+
+  .invalid-row td { background: #fafafa; color: #bbb; }
+  .invalid-msg { vertical-align: middle; }
+
+  .bar-invalid {
+    height: 100%;
+    background: repeating-linear-gradient(
+      90deg,
+      #e5e7eb 0px, #e5e7eb 6px,
+      #f3f4f6 6px, #f3f4f6 12px
+    );
+    border-radius: 999px;
+  }
+
+  .bar-pct-invalid { color: #bbb; }
 </style>
