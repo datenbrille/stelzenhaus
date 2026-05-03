@@ -7,22 +7,32 @@
   let stockLength = $state(3000);
   let compareInputRaw = $state('1800,2400,3000,3600,4800,6000');
   let selectedProfile = $state('alle');
+  let globalBoardWidth = $state(140); // mm – tatsächliche Brettbreite für Verkleidung
+
+  // Giebel-Rechner
+  let giebelBase = $state(3000);
+  let giebelHeight = $state(1500);
+  let giebelBoardWidth = $state(140);
+  let giebelCount = $state(2);
+  let giebelProfile = $state('2.4x14');
+  let giebelPreview = $state<{ length: number; quantity: number }[]>([]);
 
   let parts = $state<Part[]>([
-    { id: 'p1',  profile: '9x9',    name: 'Pfosten',         length: 1800, quantity: 4  },
-    { id: 'p2',  profile: '4x10',   name: 'Platform',        length: 2400, quantity: 7  },
-    { id: 'p3',  profile: '4x6',    name: 'Haus-A',          length: 1800, quantity: 4  },
-    { id: 'p4',  profile: '4x6',    name: 'Haus-B',          length: 1200, quantity: 11 },
-    { id: 'p5',  profile: '4x6',    name: 'Haus-C',          length: 1400, quantity: 2  },
-    { id: 'p6',  profile: '4x6',    name: 'Haus-D',          length: 900,  quantity: 8  },
-    { id: 'p7',  profile: '4x6',    name: 'Haus-E',          length: 1500, quantity: 4  },
-    { id: 'p8',  profile: '4x6',    name: 'Haus-F',          length: 600,  quantity: 2  },
-    { id: 'p9',  profile: '4x6',    name: 'Haus-G',          length: 1400, quantity: 1  },
-    { id: 'p10', profile: '2.4x14', name: 'Verkleidung-A',   length: 600,  quantity: 20 },
-    { id: 'p11', profile: '2.4x14', name: 'Verkleidung-B',   length: 4200, quantity: 2  },
-    { id: 'p12', profile: '2.4x14', name: 'Verkleidung-C',   length: 1250, quantity: 10 },
-    { id: 'p13', profile: '2.4x14', name: 'Verkleidung-D',   length: 1800, quantity: 5  },
-    { id: 'p14', profile: '2.4x14', name: 'Verkleidung-E',   length: 2100, quantity: 16 },
+    { id: 'p1',  profile: '9x9',    name: 'Pfosten',       length: 1800, quantity: 4  },
+    { id: 'p2',  profile: '4x10',   name: 'Platform',      length: 2400, quantity: 7  },
+    { id: 'p3',  profile: '4x6',    name: 'Haus-A',        length: 1800, quantity: 4  },
+    { id: 'p4',  profile: '4x6',    name: 'Haus-B',        length: 1200, quantity: 11 },
+    { id: 'p5',  profile: '4x6',    name: 'Haus-C',        length: 1400, quantity: 2  },
+    { id: 'p6',  profile: '4x6',    name: 'Haus-D',        length: 900,  quantity: 8  },
+    { id: 'p7',  profile: '4x6',    name: 'Haus-E',        length: 1500, quantity: 4  },
+    { id: 'p8',  profile: '4x6',    name: 'Haus-F',        length: 600,  quantity: 2  },
+    { id: 'p9',  profile: '4x6',    name: 'Haus-G',        length: 1400, quantity: 1  },
+    // Verkleidung: quantity wird aus coverageWidth / globalBoardWidth berechnet
+    // coverageWidth = ursprüngliche Stückzahl × 140mm (Planmaß)
+    { id: 'p10', profile: '2.4x14', name: 'Verkleidung-A', length: 600,  quantity: 20, coverageWidth: 2800  },
+    { id: 'p11', profile: '2.4x14', name: 'Verkleidung-C', length: 1250, quantity: 10, coverageWidth: 1400  },
+    { id: 'p12', profile: '2.4x14', name: 'Verkleidung-D', length: 1800, quantity: 5,  coverageWidth: 700   },
+    { id: 'p13', profile: '2.4x14', name: 'Verkleidung-E', length: 2100, quantity: 16, coverageWidth: 2240  },
   ]);
 
   let results = $state<OptimizationResult[]>([]);
@@ -31,13 +41,23 @@
 
   const profiles = $derived(['alle', ...new Set(parts.map((p) => p.profile))]);
 
+  function resolvedQuantity(part: Part): number {
+    if (part.coverageWidth != null) return Math.ceil(part.coverageWidth / globalBoardWidth);
+    return part.quantity;
+  }
+
   function getProfileGroups(): { profile: string; parts: Part[] }[] {
     const activeProfiles =
       selectedProfile === 'alle'
         ? [...new Set(parts.map((p) => p.profile))]
         : [selectedProfile];
     return activeProfiles
-      .map((profile) => ({ profile, parts: parts.filter((p) => p.profile === profile) }))
+      .map((profile) => ({
+        profile,
+        parts: parts
+          .filter((p) => p.profile === profile)
+          .map((p) => ({ ...p, quantity: resolvedQuantity(p) }))
+      }))
       .filter((g) => g.parts.length > 0);
   }
 
@@ -70,6 +90,30 @@
     parts = parts.filter((p) => p.id !== id);
   }
 
+  function calculateGiebel() {
+    const boards: { length: number; quantity: number }[] = [];
+    let y = 0;
+    while (y < giebelHeight) {
+      const length = Math.round(giebelBase * (1 - y / giebelHeight));
+      if (length < 50) break;
+      boards.push({ length, quantity: giebelCount });
+      y += giebelBoardWidth;
+    }
+    giebelPreview = boards;
+  }
+
+  function addGiebelToParts() {
+    const newParts: Part[] = giebelPreview.map((b, i) => ({
+      id: `g${nextId++}`,
+      profile: giebelProfile,
+      name: `Giebel-${i + 1}`,
+      length: b.length,
+      quantity: b.quantity
+    }));
+    parts = [...parts, ...newParts];
+    giebelPreview = [];
+  }
+
   function fmt(n: number) {
     return n.toFixed(1);
   }
@@ -100,7 +144,16 @@
                 <td><input bind:value={part.profile} class="input-sm" /></td>
                 <td><input bind:value={part.name} class="input-sm" /></td>
                 <td><input type="number" bind:value={part.length} min="1" class="input-sm input-num" /></td>
-                <td><input type="number" bind:value={part.quantity} min="1" class="input-sm input-num" /></td>
+                <td>
+                  {#if part.coverageWidth != null}
+                    <div class="qty-computed">
+                      <span class="qty-value">{resolvedQuantity(part)}</span>
+                      <span class="qty-hint" title="Deckungsbreite ÷ Brettbreite">{part.coverageWidth}÷{globalBoardWidth}</span>
+                    </div>
+                  {:else}
+                    <input type="number" bind:value={part.quantity} min="1" class="input-sm input-num" />
+                  {/if}
+                </td>
                 <td><button class="btn-del" onclick={() => removePart(part.id)}>✕</button></td>
               </tr>
             {/each}
@@ -124,9 +177,15 @@
       </label>
 
       <label>
-        Schnittbreite (mm)
-        <input type="number" bind:value={kerf} min="0" step="0.5" onchange={() => { const v = kerf; kerf = v; }} />
+        Schnittbreite / Kerf (mm)
+        <input type="number" bind:value={kerf} min="0" step="0.5" />
         <span class="hint">Sägeblatt-Kerf, Standard 5mm</span>
+      </label>
+
+      <label>
+        Tatsächliche Brettbreite Verkleidung (mm)
+        <input type="number" bind:value={globalBoardWidth} min="1" />
+        <span class="hint">Stückzahlen der Verkleidungs-Teile werden automatisch neu berechnet</span>
       </label>
 
       <hr />
@@ -148,6 +207,51 @@
       <button class="btn-secondary" onclick={runCompare}>Beste Länge finden</button>
     </section>
   </div>
+
+  <!-- Giebel-Rechner -->
+  <section class="card mt">
+    <h2>Giebel-Rechner</h2>
+    <p class="subtitle">Berechnet die Bretter-Längen für einen Dreiecks-Giebel (horizontal verlegt)</p>
+    <div class="giebel-grid">
+      <label>
+        Basisbreite (mm)
+        <input type="number" bind:value={giebelBase} min="1" />
+      </label>
+      <label>
+        Giebelhöhe (mm)
+        <input type="number" bind:value={giebelHeight} min="1" />
+      </label>
+      <label>
+        Brettbreite (mm)
+        <input type="number" bind:value={giebelBoardWidth} min="1" />
+      </label>
+      <label>
+        Anzahl Giebel
+        <input type="number" bind:value={giebelCount} min="1" max="10" />
+      </label>
+      <label>
+        Profil
+        <input bind:value={giebelProfile} />
+      </label>
+    </div>
+    <button class="btn-secondary" onclick={calculateGiebel}>Berechnen</button>
+
+    {#if giebelPreview.length > 0}
+      <div class="giebel-result mt">
+        <p class="summary">{giebelPreview.length} verschiedene Längen · {giebelPreview.reduce((s, b) => s + b.quantity, 0)} Bretter gesamt</p>
+        <div class="giebel-list">
+          {#each giebelPreview as board, i}
+            <div class="giebel-chip">
+              <span class="giebel-idx">#{i + 1}</span>
+              <span class="giebel-len">{board.length} mm</span>
+              <span class="giebel-qty">×{board.quantity}</span>
+            </div>
+          {/each}
+        </div>
+        <button class="btn-primary mt-sm" onclick={addGiebelToParts}>Zur Stückliste hinzufügen</button>
+      </div>
+    {/if}
+  </section>
 
   <!-- Vergleichstabellen -->
   {#each comparisons as cmp}
@@ -515,6 +619,52 @@
     font-size: 0.9rem;
     margin: 0 0 1.25rem;
   }
+
+  /* Quantity computed */
+  .qty-computed {
+    display: flex;
+    align-items: baseline;
+    gap: 0.3rem;
+  }
+  .qty-value {
+    font-weight: 600;
+    font-size: 0.9rem;
+    min-width: 28px;
+  }
+  .qty-hint {
+    font-size: 0.7rem;
+    color: #aaa;
+    white-space: nowrap;
+  }
+
+  /* Giebel */
+  .giebel-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+  }
+  .giebel-result { }
+  .giebel-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-bottom: 0.75rem;
+  }
+  .giebel-chip {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    border-radius: 8px;
+    padding: 0.25rem 0.6rem;
+    font-size: 0.8rem;
+  }
+  .giebel-idx { color: #aaa; font-size: 0.7rem; }
+  .giebel-len { font-weight: 600; color: #166534; }
+  .giebel-qty { color: #555; }
+  .mt-sm { margin-top: 0.5rem; }
 
   .alert-warn {
     background: #fff7ed;

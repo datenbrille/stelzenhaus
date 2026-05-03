@@ -3,6 +3,7 @@ export interface Part {
   name: string;
   length: number;
   quantity: number;
+  coverageWidth?: number; // if set, quantity is computed as ceil(coverageWidth / boardWidth)
   profile: string;
 }
 
